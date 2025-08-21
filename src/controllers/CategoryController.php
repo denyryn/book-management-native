@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../Models/Category.php';
+require_once __DIR__ . '/../models/Category.php';
 
 class CategoryController
 {
