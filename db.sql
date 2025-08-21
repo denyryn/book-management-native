@@ -1,35 +1,33 @@
 CREATE TABLE `categories` (
-  `id` integer PRIMARY KEY AUTOINCREMENT,
-  `name` varchar(255),
-  `slug` varchar(255) UNIQUE
-);
-
-CREATE TABLE `books` (
-  `id` integer PRIMARY KEY AUTOINCREMENT,
-  `category_id` integer,
-  `author_id` integer,
-  `publisher_id` integer,
-  `title` varchar(255),
-  `publication_date` date,
-  `number_of_pages` integer
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(255),
+  `slug` VARCHAR(255) UNIQUE
 );
 
 CREATE TABLE `authors` (
-  `id` integer PRIMARY KEY AUTOINCREMENT,
-  `name` varchar(255)
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(255)
 );
 
 CREATE TABLE `publishers` (
-  `id` integer PRIMARY KEY AUTOINCREMENT,
-  `name` varchar(255)
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(255)
 );
 
--- Foreign key constraints
-ALTER TABLE `books` ADD FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`);
-ALTER TABLE `books` ADD FOREIGN KEY (`author_id`) REFERENCES `authors` (`id`);
-ALTER TABLE `books` ADD FOREIGN KEY (`publisher_id`) REFERENCES `publishers` (`id`);
+CREATE TABLE `books` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `category_id` INT,
+  `author_id` INT,
+  `publisher_id` INT,
+  `title` VARCHAR(255),
+  `publication_date` DATE,
+  `number_of_pages` INT,
+  FOREIGN KEY (`category_id`) REFERENCES `categories`(`id`),
+  FOREIGN KEY (`author_id`) REFERENCES `authors`(`id`),
+  FOREIGN KEY (`publisher_id`) REFERENCES `publishers`(`id`)
+);
 
--- Indexes on foreign keys
+-- Indexes on foreign keys (optional, MySQL automatically indexes FKs, but explicit is fine)
 CREATE INDEX `idx_books_category_id` ON `books` (`category_id`);
 CREATE INDEX `idx_books_author_id` ON `books` (`author_id`);
 CREATE INDEX `idx_books_publisher_id` ON `books` (`publisher_id`);
