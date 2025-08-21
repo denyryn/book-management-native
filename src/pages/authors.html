@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Authors - Book Management</title>
+  </head>
+  <body>
+    <!-- Author Table -->
+    <table border="1" cellpadding="6">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="author-table-body">
+        <!-- Author rows will be populated here -->
+      </tbody>
+    </table>
+
+    <hr />
+
+    <!-- Author Form -->
+    <form id="author-form">
+      <input type="hidden" id="author-id" />
+      <label for="author-name">Name:</label>
+      <input type="text" id="author-name" required />
+      <button type="submit">Save</button>
+      <button type="button" id="cancel-edit" style="display: none">
+        Cancel
+      </button>
+    </form>
+
+    <script type="module">
+      import {
+        fetchAuthors,
+        addAuthor,
+        updateAuthor,
+        deleteAuthor,
+      } from "/public/js/authors.js";
+
+      const tableBody = document.getElementById("author-table-body");
+      const form = document.getElementById("author-form");
+      const idField = document.getElementById("author-id");
+      const nameField = document.getElementById("author-name");
+      const cancelBtn = document.getElementById("cancel-edit");
+
+      // --- Render table ---
+      async function loadAuthors() {
+        const authors = await fetchAuthors();
+        tableBody.innerHTML = ""; // reset
+        if (!authors.success && authors.error) {
+          tableBody.innerHTML = `<tr><td colspan="3">${authors.error}</td></tr>`;
+          return;
+        }
+        authors.forEach((author) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${author.id}</td>
+            <td>${author.name}</td>
+            <td>
+              <button data-edit="${author.id}" data-name="${author.name}">Edit</button>
+              <button data-delete="${author.id}">Delete</button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      // --- Handle form submit ---
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = idField.value;
+        const name = nameField.value.trim();
+        if (!name) return;
+
+        let result;
+        if (id) {
+          result = await updateAuthor(id, name);
+        } else {
+          result = await addAuthor(name);
+        }
+
+        if (result.success) {
+          form.reset();
+          idField.value = "";
+          cancelBtn.style.display = "none";
+          await loadAuthors();
+        } else {
+          alert(result.error || "Failed to save author");
+        }
+      });
+
+      // --- Handle cancel edit ---
+      cancelBtn.addEventListener("click", () => {
+        form.reset();
+        idField.value = "";
+        cancelBtn.style.display = "none";
+      });
+
+      // --- Handle edit/delete clicks ---
+      tableBody.addEventListener("click", async (e) => {
+        if (e.target.dataset.edit) {
+          idField.value = e.target.dataset.edit;
+          nameField.value = e.target.dataset.name;
+          cancelBtn.style.display = "inline";
+        }
+
+        if (e.target.dataset.delete) {
+          if (confirm("Are you sure you want to delete this author?")) {
+            const result = await deleteAuthor(e.target.dataset.delete);
+            if (result.success) {
+              await loadAuthors();
+            } else {
+              alert(result.error || "Failed to delete author");
+            }
+          }
+        }
+      });
+
+      // --- Initial load ---
+      loadAuthors();
+    </script>
+  </body>
+</html>

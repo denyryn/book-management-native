@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Management</title>
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 6px;
+        text-align: left;
+      }
+      input,
+      select {
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Books</h1>
+
+    <!-- Search & Filter -->
+    <div>
+      <input type="text" id="search-query" placeholder="Search Books..." />
+      <select id="filter-category">
+        <option value="">All Categories</option>
+      </select>
+      <select id="filter-author">
+        <option value="">All Authors</option>
+      </select>
+      <select id="filter-publisher">
+        <option value="">All Publishers</option>
+      </select>
+      <div>
+        <label for="filter-start-date">Start Date:</label>
+        <input type="date" id="filter-start-date" placeholder="Start Date" />
+      </div>
+      <div>
+        <label for="filter-end-date">End Date:</label>
+        <input type="date" id="filter-end-date" placeholder="End Date" />
+      </div>
+    </div>
+
+    <!-- Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Author</th>
+          <th>Publisher</th>
+          <th>Publication Date</th>
+          <th>Pages</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="book-table-body"></tbody>
+    </table>
+
+    <hr />
+
+    <!-- Form -->
+    <form id="book-form">
+      <input type="hidden" id="book-id" />
+      <label>Title:</label>
+      <input type="text" id="book-title" required /><br />
+
+      <label>Category:</label>
+      <select id="book-category" required></select
+      ><br />
+
+      <label>Author:</label>
+      <select id="book-author" required></select
+      ><br />
+
+      <label>Publisher:</label>
+      <select id="book-publisher" required></select
+      ><br />
+
+      <label>Publication Date:</label>
+      <input type="date" id="book-date" required /><br />
+
+      <label>Number of Pages:</label>
+      <input type="number" id="book-pages" required /><br />
+
+      <button type="submit">Save</button>
+      <button type="button" id="cancel-edit" style="display: none">
+        Cancel
+      </button>
+    </form>
+
+    <script type="module">
+      import {
+        fetchBooks,
+        addBook,
+        updateBook,
+        deleteBook,
+      } from "/public/js/books.js";
+
+      const tableBody = document.getElementById("book-table-body");
+      const form = document.getElementById("book-form");
+      const cancelBtn = document.getElementById("cancel-edit");
+
+      const idField = document.getElementById("book-id");
+      const titleField = document.getElementById("book-title");
+      const categoryField = document.getElementById("book-category");
+      const authorField = document.getElementById("book-author");
+      const publisherField = document.getElementById("book-publisher");
+      const dateField = document.getElementById("book-date");
+      const pagesField = document.getElementById("book-pages");
+
+      const searchQuery = document.getElementById("search-query");
+      const filterCategory = document.getElementById("filter-category");
+      const filterAuthor = document.getElementById("filter-author");
+      const filterPublisher = document.getElementById("filter-publisher");
+      const filterStartDate = document.getElementById("filter-start-date");
+      const filterEndDate = document.getElementById("filter-end-date");
+
+      // --- Fetch dropdown options ---
+      async function fetchOptions(
+        url,
+        selectEl,
+        includeAll = false,
+        allLabel = "All"
+      ) {
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          selectEl.innerHTML = "";
+          if (!data || data.success === false) {
+            selectEl.innerHTML = `<option value="">Error</option>`;
+            return;
+          }
+          if (includeAll)
+            selectEl.innerHTML = `<option value="">${allLabel}</option>`;
+          data.forEach((item) => {
+            const opt = document.createElement("option");
+            opt.value = item.id;
+            opt.textContent = item.name;
+            selectEl.appendChild(opt);
+          });
+        } catch {
+          selectEl.innerHTML = `<option value="">Error</option>`;
+        }
+      }
+
+      // --- Render table ---
+      function renderTable(books) {
+        tableBody.innerHTML = "";
+        if (!books.length) {
+          tableBody.innerHTML = `<tr><td colspan="8">No books found</td></tr>`;
+          return;
+        }
+        books.forEach((book) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+        <td>${book.id}</td>
+        <td>${book.title}</td>
+        <td>${book.category_name || ""}</td>
+        <td>${book.author_name || ""}</td>
+        <td>${book.publisher_name || ""}</td>
+        <td>${book.publication_date || ""}</td>
+        <td>${book.number_of_pages || ""}</td>
+        <td>
+          <button data-edit='${JSON.stringify(book)}'>Edit</button>
+          <button data-delete="${book.id}">Delete</button>
+        </td>
+      `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      // --- Load books with SQL filters ---
+      async function loadBooks() {
+        const params = new URLSearchParams({
+          search: searchQuery.value.trim(),
+          category: filterCategory.value,
+          author: filterAuthor.value,
+          publisher: filterPublisher.value,
+          start_date: filterStartDate.value,
+          end_date: filterEndDate.value,
+        });
+
+        const res = await fetch(`/src/api/books.php?${params.toString()}`);
+        const data = await res.json();
+        renderTable(data || []);
+      }
+
+      // --- Form submit ---
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = {
+          title: titleField.value.trim(),
+          category_id: categoryField.value,
+          author_id: authorField.value,
+          publisher_id: publisherField.value,
+          publication_date: dateField.value,
+          number_of_pages: pagesField.value,
+        };
+        let result;
+        if (idField.value) result = await updateBook(idField.value, data);
+        else result = await addBook(data);
+
+        if (result.success) {
+          form.reset();
+          idField.value = "";
+          cancelBtn.style.display = "none";
+          await loadBooks();
+        } else {
+          alert(result.error || "Failed to save book");
+        }
+      });
+
+      cancelBtn.addEventListener("click", () => {
+        form.reset();
+        idField.value = "";
+        cancelBtn.style.display = "none";
+      });
+
+      // --- Edit/Delete ---
+      tableBody.addEventListener("click", async (e) => {
+        if (e.target.dataset.edit) {
+          const book = JSON.parse(e.target.dataset.edit);
+          idField.value = book.id;
+          titleField.value = book.title;
+          categoryField.value = book.category_id;
+          authorField.value = book.author_id;
+          publisherField.value = book.publisher_id;
+          dateField.value = book.publication_date;
+          pagesField.value = book.number_of_pages;
+          cancelBtn.style.display = "inline";
+        }
+        if (e.target.dataset.delete) {
+          if (confirm("Are you sure to delete this book?")) {
+            const result = await deleteBook(e.target.dataset.delete);
+            if (result.success) loadBooks();
+            else alert(result.error || "Failed to delete");
+          }
+        }
+      });
+
+      // --- Event listeners for SQL filter reload ---
+      [
+        searchQuery,
+        filterCategory,
+        filterAuthor,
+        filterPublisher,
+        filterStartDate,
+        filterEndDate,
+      ].forEach((el) => {
+        el.addEventListener("input", loadBooks);
+        el.addEventListener("change", loadBooks);
+      });
+
+      // --- Initial load ---
+      await Promise.all([
+        fetchOptions("/src/api/categories.php", categoryField),
+        fetchOptions("/src/api/authors.php", authorField),
+        fetchOptions("/src/api/publishers.php", publisherField),
+        fetchOptions(
+          "/src/api/publishers.php",
+          filterPublisher,
+          true,
+          "All Publishers"
+        ),
+        fetchOptions(
+          "/src/api/categories.php",
+          filterCategory,
+          true,
+          "All Categories"
+        ),
+        fetchOptions("/src/api/authors.php", filterAuthor, true, "All Authors"),
+      ]);
+
+      loadBooks();
+    </script>
+  </body>
+</html>
